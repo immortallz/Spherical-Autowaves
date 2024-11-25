@@ -99,13 +99,13 @@ int main()
 		*u1_file = fopen("u1.txt", "w"),
 		*u2_file = fopen("u2.txt", "w"),
 		*u3_file = fopen("u3.txt", "w");
-	int M = 1000; // N - t coordinate; M - r coordinate
+	int M = 100; // N - t coordinate; M - r coordinate
 	vector<vector<vector<double>>>
 		E(3, vector<vector<double>>(1, vector<double>(M, 0))),
 		F(3, vector<vector<double>>(1, vector<double>(M, 0))),
 		R(3, vector<vector<double>>(1, vector<double>(M, 0)));
 	double rho_0 = 1, T_0 = 1, A = 1, r1 = 50, r_eps = 10, SR_max = -1;
-	double tau = 30, L = 100, dt, dr = L/double(M), CFL = 0.5;
+	double tau = 1, L = 100, dt, dr = L/double(M), CFL = 0.5;
 	double r, e, u, t = 0;
 	for(int j = 0; j < M; j++)
 	{
@@ -177,11 +177,11 @@ int main()
 			// ER[s][M] = E[s][i+1][M-1] - 0;
 			// EL[s][M] = E[s][i+1][M-1] + 0;
 		}
+		printf("after predictor %lf\n", E[1][i+1][0]);
 
 		//corrector
 		for(int j = 2; j < M - 2; j++)
 		{
-			// if(SR(0.5*(ER[0][j+1] + EL[0][j+1]), 0.5*(ER[1][j+1] + EL[1][j+1]), 0.5*(ER[2][j+1] + EL[2][j+1])) == -1)
 			fdif[0] = 0.5 * (F1(ER[0][j+1], ER[1][j+1], ER[2][j+1]) +
 				F1(EL[0][j+1], EL[1][j+1], EL[2][j+1]) -
 				SR(ER[0][j+1], ER[1][j+1], ER[2][j+1]) * (ER[0][j+1] - EL[0][j+1])) -
@@ -202,8 +202,12 @@ int main()
 				0.5 * (F3(ER[0][j], ER[1][j], ER[2][j]) +
 				F3(EL[0][j], EL[1][j], EL[2][j]) -
 				SR(ER[0][j], ER[1][j], ER[2][j]) * (ER[2][j] - EL[2][j]));
-			for(int s = 0; s < 3; s++)
+
+			for(int s = 0; s < 3; s++){
 				E[s][i+1][j] = E[s][i][j] - dt/dr*fdif[s] + dt*R[s][i][j];
+				if(s==1)
+					printf("%d it: %lf = %lf - %lf + %lf\n", j, E[s][i+1][j],E[s][i][j],dt/dr*fdif[s],dt*R[s][i][j]);
+			}
 		}
 		// снос значений на 0, 1, M-2, M-1 узлы (с 2 и M-3 соотв.)
 		for(int s = 0; s < 3; s++)
@@ -213,6 +217,7 @@ int main()
 			E[s][i+1][M-2] = E[s][i+1][M-3];
 			E[s][i+1][M-1] = E[s][i+1][M-3];
 		}
+		printf("after corrector %lf\n", E[1][i+1][0]);
 
 		//F and R update
 		for(int s = 0; s < 3; s++)
