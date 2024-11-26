@@ -149,17 +149,20 @@ int main()
 		//predictor
 		for(int s = 0; s < 3; s++)
 		{
-			E[s].push_back({});
+			E[s].push_back(vector<double>(M, 0));
 			// E[s][i+1][0] = E[s][i][0] - 0.5*dt/dr*(F[s][i][1] - F[s][i][0]) + 0.5*dt*R[s][i][0];
-			E[s][i+1].push_back(0.0);
+			// E[s][i+1].push_back(0.0);
 			for(int j = 1; j < M - 1; j++)
-				E[s][i+1].push_back(E[s][i][j] - 0.25*dt/dr*(F[s][i][j+1] - F[s][i][j-1]) + 0.5*dt*R[s][i][j]);
-			E[s][i+1].push_back(0.0);
+				E[s][i+1][j] = E[s][i][j] - 0.25*dt/dr*(F[s][i][j+1] - F[s][i][j-1]) + 0.5*dt*R[s][i][j];
+			// E[s][i+1].push_back(0.0);
 			
 			// снос значений на индексы 0 и M-1 (с 1 и M-2 соотв.)
 			E[s][i+1][0] = E[s][i+1][1];
 			E[s][i+1][M - 1] = E[s][i+1][M - 2];
 
+			for(int j = 1; j < 3; j++)
+				if(s==1)
+					printf("%d it: %lf = %lf - %lf + %lf\n", j, E[s][i+1][j],E[s][i][j],0.25*dt/dr*(F[s][i][j+1] - F[s][i][j-1]),0.5*dt*R[s][i][j]);
 			//streams
 
 			// ER[s][0] = E[s][i+1][0] - 0;
@@ -177,7 +180,7 @@ int main()
 			// ER[s][M] = E[s][i+1][M-1] - 0;
 			// EL[s][M] = E[s][i+1][M-1] + 0;
 		}
-		printf("after predictor %lf\n", E[1][i+1][0]);
+		printf("after predictor %lf %lf %lf\n", E[1][i+1][0], E[1][i+1][1], E[1][i+1][2]);
 
 		//corrector
 		for(int j = 2; j < M - 2; j++)
@@ -205,7 +208,7 @@ int main()
 
 			for(int s = 0; s < 3; s++){
 				E[s][i+1][j] = E[s][i][j] - dt/dr*fdif[s] + dt*R[s][i][j];
-				if(s==1)
+				if(s==1 && j < 3)
 					printf("%d it: %lf = %lf - %lf + %lf\n", j, E[s][i+1][j],E[s][i][j],dt/dr*fdif[s],dt*R[s][i][j]);
 			}
 		}
@@ -217,23 +220,23 @@ int main()
 			E[s][i+1][M-2] = E[s][i+1][M-3];
 			E[s][i+1][M-1] = E[s][i+1][M-3];
 		}
-		printf("after corrector %lf\n", E[1][i+1][0]);
+		printf("after corrector %lf %lf %lf\n", E[1][i+1][0], E[1][i+1][1], E[1][i+1][2]);
 
 		//F and R update
 		for(int s = 0; s < 3; s++)
 		{
-			F[s].push_back({});
-			R[s].push_back({});
+			F[s].push_back(vector<double>(M, 0));
+			R[s].push_back(vector<double>(M, 0));
 		}
 		for(int j = 0; j < M; j++)
 		{
-			F[0][i+1].push_back(F1(E[0][i+1][j], E[1][i+1][j], E[2][i+1][j]));
-			F[1][i+1].push_back(F2(E[0][i+1][j], E[1][i+1][j], E[2][i+1][j]));
-			F[2][i+1].push_back(F3(E[0][i+1][j], E[1][i+1][j], E[2][i+1][j]));
+			F[0][i+1][j] = F1(E[0][i+1][j], E[1][i+1][j], E[2][i+1][j]);
+			F[1][i+1][j] = F2(E[0][i+1][j], E[1][i+1][j], E[2][i+1][j]);
+			F[2][i+1][j] = F3(E[0][i+1][j], E[1][i+1][j], E[2][i+1][j]);
 
-			R[0][i+1].push_back(R1(E[0][i+1][j], E[1][i+1][j], E[2][i+1][j], j*dr + r_eps));
-			R[1][i+1].push_back(R2(E[0][i+1][j], E[1][i+1][j], E[2][i+1][j], j*dr + r_eps));
-			R[2][i+1].push_back(R3(E[0][i+1][j], E[1][i+1][j], E[2][i+1][j], j*dr + r_eps));
+			R[0][i+1][j] = R1(E[0][i+1][j], E[1][i+1][j], E[2][i+1][j], j*dr + r_eps);
+			R[1][i+1][j] = R2(E[0][i+1][j], E[1][i+1][j], E[2][i+1][j], j*dr + r_eps);
+			R[2][i+1][j] = R3(E[0][i+1][j], E[1][i+1][j], E[2][i+1][j], j*dr + r_eps);
 		}
 
 		
@@ -274,5 +277,6 @@ int main()
 		i++;
 	}
 	fclose(f);
+	cout << E.size() << " " << E[0].size() << " " << E[0][0].size() << endl;
 	return 0;
 }
