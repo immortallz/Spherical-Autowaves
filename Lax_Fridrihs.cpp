@@ -21,7 +21,7 @@ double Qn(double rho, double T)
 		printf("pow(rho or T):");
 		return -1;
 	}
-	// return rho * (0.685*(2.46*pow(rho, 0.8) - rho*T) * pow(T, 0.5) - pow(T, 0.4)*pow(rho, 0.17));
+	return rho * (0.685*(2.46*pow(rho, 0.8) - rho*T) * pow(T, 0.5) - pow(T, 0.4)*pow(rho, 0.17));
 	return 0;
 }
 
@@ -76,7 +76,7 @@ double R3(double E1, double E2, double E3, double r)
 	return Qn(E1/r/r, (gamma-1)/k_m*(E3/E1 - 0.5*E2*E2/E1/E1))*r*r;
 }
 
-double u_(double E1, double E2, double E3, double r)
+double u_(double E1, double E2, double E3)
 {
 	return E2/E1;
 }
@@ -86,11 +86,18 @@ double rho_(double E1, double E2, double E3, double r)
 	return E1/r/r;
 }
 
-double T_(double E1, double E2, double E3, double r)
+double T_(double E1, double E2, double E3)
 {
 	double e = E3/E1 - 0.5*E2*E2/E1/E1;
 	return e*(gamma-1)/k_m;
 }
+
+double e_(double E1, double E2, double E3)
+{
+	double e = E3/E1 - 0.5*E2*E2/E1/E1;
+	return e;
+}
+
 
 int main()
 {
@@ -99,13 +106,13 @@ int main()
 		*u1_file = fopen("u1.txt", "w"),
 		*u2_file = fopen("u2.txt", "w"),
 		*u3_file = fopen("u3.txt", "w");
-	int M = 100; // N - t coordinate; M - r coordinate
+	int M = 500; // N - t coordinate; M - r coordinate
 	vector<vector<vector<double>>>
 		E(3, vector<vector<double>>(1, vector<double>(M, 0))),
 		F(3, vector<vector<double>>(1, vector<double>(M, 0))),
 		R(3, vector<vector<double>>(1, vector<double>(M, 0)));
-	double rho_0 = 1, T_0 = 1, A = 1, r1 = 50, r_eps = 10, SR_max = -1;
-	double tau = 1, L = 100, dt, dr = L/double(M), CFL = 0.5;
+	double rho_0 = 1, T_0 = 1, A = 1, r1 = 5, r_eps = 10, SR_max = -1;
+	double tau = 30, L = 10, dt, dr = L/double(M), CFL = 0.5;
 	double r, e, u, t = 0;
 	for(int j = 0; j < M; j++)
 	{
@@ -142,7 +149,7 @@ int main()
 		EL(3, vector<double>(M+1, 0)); // ER[s][k] ~ k - 1/2
 	vector<double> fdif(3);
 
-	fprintf(ff, "u[%d,%d] = %lf\n", 0, 0, u_(E[0][0][0],E[1][0][0],E[2][0][0], r_eps));
+	fprintf(ff, "u[%d,%d] = %lf\n", 0, 0, u_(E[0][0][0],E[1][0][0],E[2][0][0]));
 	int i = 0;
 	while(t < tau)
 	{
@@ -155,14 +162,25 @@ int main()
 			for(int j = 1; j < M - 1; j++)
 				E[s][i+1][j] = E[s][i][j] - 0.25*dt/dr*(F[s][i][j+1] - F[s][i][j-1]) + 0.5*dt*R[s][i][j];
 			// E[s][i+1].push_back(0.0);
-			
+		}
 			// снос значений на индексы 0 и M-1 (с 1 и M-2 соотв.)
-			E[s][i+1][0] = E[s][i+1][1];
-			E[s][i+1][M - 1] = E[s][i+1][M - 2];
-
-			for(int j = 1; j < 3; j++)
-				if(s==1)
-					printf("%d it: %lf = %lf - %lf + %lf\n", j, E[s][i+1][j],E[s][i][j],0.25*dt/dr*(F[s][i][j+1] - F[s][i][j-1]),0.5*dt*R[s][i][j]);
+			// E[0][i+1][1] = E[0][i+1][1];
+			
+			E[2][i+1][1] = E[0][i+1][1]*e_(E[0][i+1][1], E[1][i+1][1], E[2][i+1][1]);
+			E[1][i+1][1] = 0;
+			// E[0][i+1][M - 2] = E[0][i+1][M - 2];
+			E[2][i+1][M - 2] = E[0][i+1][M - 2]*e_(E[0][i+1][M - 2], E[1][i+1][M - 2], E[2][i+1][M - 2]);
+			E[1][i+1][M - 2] = 0;
+			for(int s = 0; s < 3; s++)
+			{
+				E[s][i+1][0] = E[s][i+1][1];
+				E[s][i+1][M - 1] = E[s][i+1][M - 2];
+			}
+		for(int s = 0; s < 3; s++)
+		{
+			// for(int j = 1; j < 3; j++)
+			// 	if(s==1)
+					// printf("%d it: %lf = %lf - %lf + %lf\n", j, E[s][i+1][j],E[s][i][j],0.25*dt/dr*(F[s][i][j+1] - F[s][i][j-1]),0.5*dt*R[s][i][j]);
 			//streams
 
 			// ER[s][0] = E[s][i+1][0] - 0;
@@ -180,7 +198,7 @@ int main()
 			// ER[s][M] = E[s][i+1][M-1] - 0;
 			// EL[s][M] = E[s][i+1][M-1] + 0;
 		}
-		printf("after predictor %lf %lf %lf\n", E[1][i+1][0], E[1][i+1][1], E[1][i+1][2]);
+		// printf("after predictor %lf %lf %lf\n", E[1][i+1][0], E[1][i+1][1], E[1][i+1][2]);
 
 		//corrector
 		for(int j = 2; j < M - 2; j++)
@@ -208,11 +226,16 @@ int main()
 
 			for(int s = 0; s < 3; s++){
 				E[s][i+1][j] = E[s][i][j] - dt/dr*fdif[s] + dt*R[s][i][j];
-				if(s==1 && j < 3)
-					printf("%d it: %lf = %lf - %lf + %lf\n", j, E[s][i+1][j],E[s][i][j],dt/dr*fdif[s],dt*R[s][i][j]);
+				// if(s==1 && j < 3)
+					// printf("%d it: %lf = %lf - %lf + %lf\n", j, E[s][i+1][j],E[s][i][j],dt/dr*fdif[s],dt*R[s][i][j]);
 			}
 		}
 		// снос значений на 0, 1, M-2, M-1 узлы (с 2 и M-3 соотв.)
+		E[2][i+1][2] = E[0][i+1][2]*e_(E[0][i+1][2], E[1][i+1][2], E[2][i+1][2]);
+		E[1][i+1][2] = 0;
+		E[2][i+1][M - 3] = E[0][i+1][M - 3]*e_(E[0][i+1][M - 3], E[1][i+1][M - 3], E[2][i+1][M - 3]);
+		E[1][i+1][M - 3] = 0;
+
 		for(int s = 0; s < 3; s++)
 		{
 			E[s][i+1][0] = E[s][i+1][2];
@@ -220,7 +243,23 @@ int main()
 			E[s][i+1][M-2] = E[s][i+1][M-3];
 			E[s][i+1][M-1] = E[s][i+1][M-3];
 		}
-		printf("after corrector %lf %lf %lf\n", E[1][i+1][0], E[1][i+1][1], E[1][i+1][2]);
+
+		// E[0][i+1][0] = E[0][i+1][2];
+		// E[1][i+1][0] = 0;
+		// E[2][i+1][0] = E[0][i+1][2]*e_(E[0][i+1][2], E[1][i+1][2], E[2][i+1][2]);
+		// E[0][i+1][1] = E[0][i+1][2];
+		// E[1][i+1][1] = E[1][i+1][2];
+		// E[2][i+1][1] = E[2][i+1][2];
+
+		// E[0][i+1][M - 1] = E[0][i+1][M - 3];
+		// E[1][i+1][M - 1] = 0;
+		// E[2][i+1][M - 1] = E[0][i+1][M - 3]*e_(E[0][i+1][M - 3], E[1][i+1][M - 3], E[2][i+1][M - 3]);
+		// E[0][i+1][M - 2] = E[0][i+1][M - 3];
+		// E[1][i+1][M - 2] = E[1][i+1][M - 3];
+		// E[2][i+1][M - 2] = E[2][i+1][M - 3];
+		
+
+		// printf("after corrector %lf %lf %lf\n", E[1][i+1][0], E[1][i+1][1], E[1][i+1][2]);
 
 		//F and R update
 		for(int s = 0; s < 3; s++)
@@ -240,7 +279,7 @@ int main()
 		}
 
 		
-		fprintf(ff, "u[%d,%d] = %lf\n", i+1, 0, u_(E[0][i+1][0],E[1][i+1][0],E[2][i+1][0], 0*dr+r_eps));
+		fprintf(ff, "u[%d,%d] = %lf\n", i+1, 0, u_(E[0][i+1][0],E[1][i+1][0],E[2][i+1][0]));
 
 		// CFL
 		SR_max = -1;
@@ -262,15 +301,15 @@ int main()
 		switch(i){
 			case 100:
 				for(int j = 0; j < M; j++)
-					fprintf(u1_file, "%lf %lf\n", j*dr + r_eps, u_(E[0][i][j], E[1][i][j], E[2][i][j], 0));
+					fprintf(u1_file, "%lf %lf\n", j*dr + r_eps, u_(E[0][i][j], E[1][i][j], E[2][i][j]));
 				break;
 			case 200:
 				for(int j = 0; j < M; j++)
-					fprintf(u2_file, "%lf %lf\n", j*dr + r_eps, u_(E[0][i][j], E[1][i][j], E[2][i][j], 0));
+					fprintf(u2_file, "%lf %lf\n", j*dr + r_eps, u_(E[0][i][j], E[1][i][j], E[2][i][j]));
 				break;
 			case 300:
 				for(int j = 0; j < M; j++)
-					fprintf(u3_file, "%lf %lf\n", j*dr + r_eps, u_(E[0][i][j], E[1][i][j], E[2][i][j], 0));
+					fprintf(u3_file, "%lf %lf\n", j*dr + r_eps, u_(E[0][i][j], E[1][i][j], E[2][i][j]));
 				break;
 		}
 
